@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Playlistur — Gorgon Live</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Teko:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:        #080b0f;
+      --bg2:       #0d1117;
+      --bg3:       #111820;
+      --border:    #1e2d3d;
+      --red:       #e63030;
+      --red-dim:   #7a1a1a;
+      --red-glow:  rgba(230,48,48,0.14);
+      --amber:     #f5a623;
+      --green:     #22c55e;
+      --green-dim: #14532d;
+      --text:      #c8d8e8;
+      --text-dim:  #7a9ab0;
+      --text-bright:#eaf4ff;
+      --mono:      'Share Tech Mono', monospace;
+      --display:   'Orbitron', sans-serif;
+      --label:     'Teko', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--mono);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* scanlines */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 4px);
+      pointer-events: none; z-index: 100;
+    }
+    /* grid */
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(230,48,48,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(230,48,48,0.025) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ── NAV ── */
+    .back-nav {
+      position: relative; z-index: 10;
+      padding: 18px 32px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 12px;
+      background: rgba(8,11,15,0.95);
+    }
+    .back-nav a {
+      font-family: var(--label); font-size: 1rem; letter-spacing: .12em;
+      color: var(--text-dim); text-decoration: none; text-transform: uppercase;
+      transition: color .2s; display: flex; align-items: center; gap: 8px;
+    }
+    .back-nav a:hover { color: var(--red); }
+    .back-nav a::before { content: '◂'; font-size: .8rem; }
+    .nav-sep { color: var(--border); }
+    .nav-current { font-family: var(--label); font-size: 1rem; letter-spacing: .12em; color: var(--red); text-transform: uppercase; }
+
+    /* ── HERO ── */
+    .hero {
+      position: relative; z-index: 10;
+      padding: 52px 32px 36px; text-align: center;
+    }
+    .hero-eyebrow {
+      font-family: var(--label); font-size: .85rem; letter-spacing: .3em;
+      color: var(--red); text-transform: uppercase; margin-bottom: 12px;
+      opacity: 0; animation: fadeUp .5s .1s ease forwards;
+    }
+    .hero-title {
+      font-family: var(--display); font-size: clamp(2rem,5vw,3.2rem);
+      font-weight: 900; color: var(--text-bright); letter-spacing: .06em;
+      line-height: 1; text-transform: uppercase;
+      opacity: 0; animation: fadeUp .5s .2s ease forwards;
+    }
+    .hero-title span { color: var(--red); text-shadow: 0 0 24px rgba(230,48,48,.5); }
+    .hero-sub {
+      margin-top: 14px; font-size: .78rem; color: var(--text-dim); letter-spacing: .08em;
+      opacity: 0; animation: fadeUp .5s .3s ease forwards;
+    }
+
+    /* ── WRAP ── */
+    .tool-wrap {
+      position: relative; z-index: 10;
+      max-width: 800px; margin: 0 auto; padding: 0 24px 100px;
+    }
+
+    /* ── MODE TABS ── */
+    .mode-tabs {
+      display: flex; gap: 0; margin-bottom: 24px;
+      border: 1px solid var(--border); overflow: hidden;
+      opacity: 0; animation: fadeUp .5s .35s ease forwards;
+    }
+    .mode-tab {
+      flex: 1; padding: 14px 12px;
+      font-family: var(--label); font-size: .85rem; letter-spacing: .18em;
+      text-transform: uppercase; text-align: center;
+      background: transparent; border: none; cursor: pointer;
+      color: var(--text-dim); transition: all .2s;
+      border-right: 1px solid var(--border);
+      position: relative;
+    }
+    .mode-tab:last-child { border-right: none; }
+    .mode-tab.active {
+      background: var(--red-glow); color: var(--red);
+    }
+    .mode-tab.active::after {
+      content: ''; position: absolute; bottom: 0; left: 0; right: 0;
+      height: 2px; background: var(--red);
+    }
+    .mode-tab .wip-badge {
+      display: inline-block; font-size: .55rem; letter-spacing: .1em;
+      background: var(--bg3); border: 1px solid var(--border);
+      color: var(--text-dim); padding: 1px 5px; margin-left: 6px;
+      vertical-align: middle; position: relative; top: -1px;
+    }
+
+    /* ── PANEL ── */
+    .panel { display: none; }
+    .panel.active { display: block; animation: fadeUp .35s ease forwards; }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--bg2); border: 1px solid var(--border);
+      margin-bottom: 16px; position: relative; overflow: hidden;
+    }
+    .card-header {
+      padding: 13px 20px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px; background: var(--bg3);
+    }
+    .card-num {
+      font-family: var(--display); font-size: .58rem; font-weight: 700;
+      color: var(--red); background: var(--red-glow);
+      border: 1px solid var(--red-dim); padding: 2px 7px; letter-spacing: .1em;
+    }
+    .card-title {
+      font-family: var(--label); font-size: .9rem;
+      letter-spacing: .2em; color: var(--text); text-transform: uppercase;
+    }
+    .card-body { padding: 20px; }
+
+    /* ── FORM ── */
+    .field-label {
+      font-family: var(--label); font-size: .75rem; letter-spacing: .2em;
+      color: var(--text-dim); text-transform: uppercase; margin-bottom: 8px; display: block;
+    }
+    textarea, input[type="text"] {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      color: var(--text-bright); font-family: var(--mono); font-size: .84rem;
+      padding: 12px 14px; outline: none; resize: vertical;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    textarea { min-height: 190px; line-height: 1.75; }
+    textarea:focus, input[type="text"]:focus {
+      border-color: var(--red-dim); box-shadow: 0 0 0 2px var(--red-glow);
+    }
+    textarea::placeholder, input[type="text"]::placeholder { color: var(--text-dim); opacity: .55; }
+    .field-hint { margin-top: 7px; font-size: .71rem; color: var(--text-dim); line-height: 1.5; }
+
+    /* ── GENERATE BUTTON ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 9px;
+      padding: 12px 26px;
+      font-family: var(--display); font-size: .7rem; font-weight: 700;
+      letter-spacing: .15em; text-transform: uppercase;
+      border: none; cursor: pointer; transition: all .2s; text-decoration: none;
+      position: relative; overflow: hidden;
+    }
+    .btn::after { content: ''; position: absolute; inset: 0; background: rgba(255,255,255,.08); opacity: 0; transition: opacity .2s; }
+    .btn:hover::after { opacity: 1; }
+    .btn-red { background: var(--red); color: #fff; box-shadow: 0 0 20px rgba(230,48,48,.2); }
+    .btn-red:hover { box-shadow: 0 0 36px rgba(230,48,48,.4); transform: translateY(-1px); }
+    .btn-ghost { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+    .btn-ghost:hover { color: var(--text); border-color: var(--text-dim); }
+    .btn-green { background: var(--green-dim); color: var(--green); border: 1px solid var(--green); box-shadow: 0 0 16px rgba(34,197,94,.15); }
+    .btn-green:hover { box-shadow: 0 0 28px rgba(34,197,94,.3); transform: translateY(-1px); }
+
+    .generate-row {
+      display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+      margin-top: 4px;
+    }
+    .video-count { font-size: .75rem; color: var(--text-dim); }
+
+    /* ── RESULT CARD ── */
+    .result-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      margin-bottom: 16px; overflow: hidden;
+      display: none;
+    }
+    .result-card.visible { display: block; animation: fadeUp .3s ease; }
+    .result-card::before { content: ''; display: block; height: 2px; background: linear-gradient(90deg, transparent, var(--red), transparent); }
+
+    .result-inner { padding: 20px; }
+    .result-label { font-family: var(--label); font-size: .75rem; letter-spacing: .2em; color: var(--text-dim); text-transform: uppercase; margin-bottom: 10px; }
+    .link-row { display: flex; gap: 8px; align-items: stretch; }
+    .link-display {
+      flex: 1; background: var(--bg); border: 1px solid var(--border);
+      padding: 10px 12px; font-size: .72rem; color: var(--amber);
+      word-break: break-all; line-height: 1.5; min-height: 42px;
+    }
+    .copy-btn {
+      padding: 10px 16px; font-family: var(--display); font-size: .62rem;
+      font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+      background: var(--bg3); border: 1px solid var(--border);
+      color: var(--text-dim); cursor: pointer; white-space: nowrap; transition: all .2s;
+      flex-shrink: 0;
+    }
+    .copy-btn:hover { color: var(--text); border-color: var(--text-dim); }
+    .copy-btn.copied { color: var(--green); border-color: var(--green); background: rgba(34,197,94,.08); }
+
+    .open-row { margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap; }
+
+    /* ── STEPS ── */
+    .steps-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      margin-bottom: 16px; overflow: hidden;
+    }
+    .steps-card::before { content: ''; display: block; height: 2px; background: linear-gradient(90deg, transparent, var(--amber), transparent); }
+
+    .steps-header {
+      padding: 13px 20px; border-bottom: 1px solid var(--border);
+      background: var(--bg3); display: flex; align-items: center; gap: 10px;
+    }
+    .steps-tag {
+      font-family: var(--display); font-size: .58rem; font-weight: 700;
+      color: var(--amber); background: rgba(245,166,35,.1);
+      border: 1px solid rgba(245,166,35,.3); padding: 2px 7px; letter-spacing: .1em;
+    }
+    .steps-title { font-family: var(--label); font-size: .9rem; letter-spacing: .2em; color: var(--text); text-transform: uppercase; }
+
+    .steps-body { padding: 20px; }
+
+    .step {
+      display: flex; gap: 16px; margin-bottom: 20px;
+      padding-bottom: 20px; border-bottom: 1px solid var(--border);
+    }
+    .step:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+
+    .step-num {
+      font-family: var(--display); font-size: .72rem; font-weight: 900;
+      color: var(--red); min-width: 28px; padding-top: 2px;
+      flex-shrink: 0;
+    }
+    .step-content { flex: 1; }
+    .step-action {
+      font-family: var(--label); font-size: .95rem; letter-spacing: .1em;
+      color: var(--text-bright); text-transform: uppercase; margin-bottom: 4px;
+    }
+    .step-desc { font-size: .75rem; color: var(--text-dim); line-height: 1.6; }
+    .step-desc code {
+      background: var(--bg3); border: 1px solid var(--border);
+      padding: 1px 6px; color: var(--amber); font-family: var(--mono); font-size: .78em;
+    }
+    .step-note {
+      margin-top: 7px; font-size: .72rem;
+      color: var(--amber); background: rgba(245,166,35,.07);
+      border: 1px solid rgba(245,166,35,.2); padding: 6px 10px; line-height: 1.5;
+    }
+
+    /* ── WIP PANEL ── */
+    .wip-panel {
+      background: var(--bg2); border: 1px solid var(--border);
+      padding: 48px 32px; text-align: center; opacity: .7;
+      position: relative; overflow: hidden;
+    }
+    .wip-panel::before { content: ''; position: absolute; inset: 0;
+      background: repeating-linear-gradient(-45deg, transparent, transparent 8px, rgba(255,255,255,.015) 8px, rgba(255,255,255,.015) 16px);
+    }
+    .wip-icon { font-size: 2.2rem; margin-bottom: 16px; display: block; }
+    .wip-title { font-family: var(--display); font-size: 1rem; font-weight: 700; letter-spacing: .12em; color: var(--text-dim); text-transform: uppercase; margin-bottom: 10px; }
+    .wip-desc { font-size: .78rem; color: var(--text-dim); line-height: 1.7; max-width: 480px; margin: 0 auto 24px; }
+    .wip-tag {
+      display: inline-block; font-family: var(--display); font-size: .62rem;
+      font-weight: 700; letter-spacing: .15em; text-transform: uppercase;
+      padding: 6px 14px; border: 1px solid var(--border); color: var(--text-dim);
+      background: var(--bg3);
+    }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); }
+    ::-webkit-scrollbar-thumb:hover { background: var(--red-dim); }
+
+    @media (max-width: 540px) {
+      .back-nav { padding: 14px 16px; }
+      .hero { padding: 36px 16px 24px; }
+      .tool-wrap { padding: 0 12px 60px; }
+      .card-body, .steps-body, .result-inner { padding: 14px; }
+      .mode-tab { font-size: .72rem; padding: 12px 6px; }
+      .link-row { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="back-nav">
+    <a href="/">Gorgon Live</a>
+    <span class="nav-sep">›</span>
+    <span class="nav-current">Playlistur</span>
+  </nav>
+
+  <!-- HERO -->
+  <header class="hero">
+    <div class="hero-eyebrow">Gorgon Live · Tools</div>
+    <h1 class="hero-title"><span>Playlistur</span></h1>
+    <p class="hero-sub">Paste YouTube URLs · Build a playlist in seconds</p>
+  </header>
+
+  <!-- TOOL -->
+  <main class="tool-wrap">
+
+    <!-- MODE TABS -->
+    <div class="mode-tabs">
+      <button class="mode-tab active" onclick="switchMode('url', this)">URL Generator</button>
+      <button class="mode-tab" onclick="switchMode('api', this)">
+        API Mode <span class="wip-badge">WIP</span>
+      </button>
+    </div>
+
+    <!-- ── URL GENERATOR PANEL ── -->
+    <div class="panel active" id="panel-url">
+
+      <!-- Input card -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-num">01</span>
+          <span class="card-title">Paste YouTube URLs</span>
+        </div>
+        <div class="card-body">
+          <label class="field-label" for="url-input">One URL per line</label>
+          <textarea id="url-input" placeholder="https://www.youtube.com/watch?v=dQw4w9WgXcQ
+https://youtu.be/dQw4w9WgXcQ
+https://www.youtube.com/shorts/dQw4w9WgXcQ" oninput="onInput()"></textarea>
+          <p class="field-hint">Supports watch, youtu.be, Shorts, and embed links. Duplicates are removed automatically.</p>
+          <div class="generate-row" style="margin-top:14px;">
+            <button class="btn btn-red" onclick="generate()">▶&nbsp; Generate Link</button>
+            <span class="video-count" id="vid-count"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Result card -->
+      <div class="result-card" id="result-card">
+        <div class="result-inner">
+          <div class="result-label">Your playlist link</div>
+          <div class="link-row">
+            <div class="link-display" id="link-display">—</div>
+            <button class="copy-btn" id="copy-btn" onclick="copyLink()">Copy</button>
+          </div>
+          <div class="open-row">
+            <a class="btn btn-green" id="open-btn" href="#" target="_blank">▶&nbsp; Open in YouTube</a>
+            <button class="btn btn-ghost" onclick="reset()">↺ Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Steps card -->
+      <div class="steps-card" id="steps-card" style="display:none;">
+        <div class="steps-header">
+          <span class="steps-tag">How To Save</span>
+          <span class="steps-title">Converting Queue to Playlist</span>
+        </div>
+        <div class="steps-body">
+
+          <div class="step">
+            <div class="step-num">01</div>
+            <div class="step-content">
+              <div class="step-action">Open the link</div>
+              <div class="step-desc">Click <strong style="color:var(--text)">Open in YouTube</strong> above. Your videos load as an unlisted queue — they'll play in order but can't be saved yet.</div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-num">02</div>
+            <div class="step-content">
+              <div class="step-action">Add any video to the queue</div>
+              <div class="step-desc">
+                In the YouTube recommendations on the right, hover over any video and click the <code>⋮</code> three-dot menu → <strong style="color:var(--text)">Add to queue</strong>.
+              </div>
+              <div class="step-note">⚡ This triggers YouTube to convert the unlisted queue into a saveable playlist.</div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-num">03</div>
+            <div class="step-content">
+              <div class="step-action">Save the queue</div>
+              <div class="step-desc">The queue panel now shows a <strong style="color:var(--text)">Save</strong> button at the top. Click it, give your playlist a name, and confirm.</div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-num">04</div>
+            <div class="step-content">
+              <div class="step-action">Remove the extra video</div>
+              <div class="step-desc">Go to your playlist in YouTube and delete the video you added in Step 2. Your original videos remain.</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div><!-- /panel-url -->
+
+    <!-- ── API MODE PANEL ── -->
+    <div class="panel" id="panel-api">
+      <div class="wip-panel">
+        <span class="wip-icon">⚙</span>
+        <div class="wip-title">API Mode — Work in Progress</div>
+        <div class="wip-desc">
+          A full OAuth-authenticated version is in development. This mode will create playlists directly in your YouTube account — no manual steps required. Pending Google API verification.
+        </div>
+        <span class="wip-tag">▸ Coming Soon</span>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    // ── State ──────────────────────────────────────────────────────────────
+    let generatedUrl = '';
+
+    // ── URL parsing ────────────────────────────────────────────────────────
+    function extractId(raw) {
+      const url = raw.trim();
+      if (!url) return null;
+      const patterns = [
+        /[?&]v=([a-zA-Z0-9_-]{11})/,
+        /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+        /\/embed\/([a-zA-Z0-9_-]{11})/,
+        /\/shorts\/([a-zA-Z0-9_-]{11})/,
+        /\/v\/([a-zA-Z0-9_-]{11})/,
+      ];
+      for (const p of patterns) {
+        const m = url.match(p);
+        if (m) return m[1];
+      }
+      if (/^[a-zA-Z0-9_-]{11}$/.test(url)) return url;
+      return null;
+    }
+
+    function parseInput() {
+      const lines = document.getElementById('url-input').value.split('\n');
+      const ids = [], seen = new Set();
+      for (const line of lines) {
+        const id = extractId(line);
+        if (id && !seen.has(id)) { seen.add(id); ids.push(id); }
+      }
+      return ids;
+    }
+
+    // ── Live count ─────────────────────────────────────────────────────────
+    function onInput() {
+      const ids = parseInput();
+      const el = document.getElementById('vid-count');
+      el.textContent = ids.length > 0 ? ids.length + ' video' + (ids.length === 1 ? '' : 's') + ' detected' : '';
+    }
+
+    // ── Generate ───────────────────────────────────────────────────────────
+    function generate() {
+      const ids = parseInput();
+      if (ids.length === 0) { alert('No valid YouTube URLs found.'); return; }
+
+      generatedUrl = 'https://www.youtube.com/watch_videos?video_ids=' + ids.join(',');
+
+      document.getElementById('link-display').textContent = generatedUrl;
+      document.getElementById('open-btn').href = generatedUrl;
+      document.getElementById('result-card').classList.add('visible');
+      document.getElementById('steps-card').style.display = 'block';
+      document.getElementById('copy-btn').textContent = 'Copy';
+      document.getElementById('copy-btn').classList.remove('copied');
+
+      // scroll to result
+      document.getElementById('result-card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // ── Copy ───────────────────────────────────────────────────────────────
+    function copyLink() {
+      if (!generatedUrl) return;
+      navigator.clipboard.writeText(generatedUrl).then(() => {
+        const btn = document.getElementById('copy-btn');
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+      });
+    }
+
+    // ── Reset ──────────────────────────────────────────────────────────────
+    function reset() {
+      document.getElementById('url-input').value = '';
+      document.getElementById('vid-count').textContent = '';
+      document.getElementById('result-card').classList.remove('visible');
+      document.getElementById('steps-card').style.display = 'none';
+      generatedUrl = '';
+    }
+
+    // ── Mode tabs ──────────────────────────────────────────────────────────
+    function switchMode(mode, btn) {
+      document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-' + mode).classList.add('active');
+    }
+  </script>
+
+</body>
+</html>
